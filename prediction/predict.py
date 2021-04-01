@@ -24,12 +24,14 @@ print(data)
 data.columns = ['Date','Heure','Total cumulé','Total de la journée','Unnamed','Remarque']
 data
 # %%
+# On enleve les colonnes inutiles 
 data.drop([0,1])
 bike = data.drop(columns=['Unnamed','Remarque'])
 bike
 
 
 # %%
+# On formate la date
 bike_date = pd.to_datetime(bike['Date'] + ' ' + bike['Heure'], format='%d/%m/%Y %H:%M:%f')
 
 
@@ -48,7 +50,7 @@ bike = bike.drop(columns='Total cumulé')
 bike
 
 # %%
-
+# On sélectionne uniquement les horaires entre minuit et 9h
 bike09 = bike[(bike['Date'].dt.hour >= 0) & (bike['Date'].dt.hour <= 8)]
 bike09tot = bike09.groupby(bike09['Date'].dt.date).sum()
 bike09tot
@@ -58,7 +60,7 @@ bike09tot['Date'] = bike09tot.index
 bike09tot['Date'] = pd.to_datetime(bike09tot['Date'])
 bike09tot
 # %%
-
+# On enleve les données du premiers confinnement
 bike09tot.drop(bike09tot[(bike09tot['Date'].dt.year == 2020) & (bike09tot['Date'].dt.month <= 5)].index, inplace=True)
 bike09tot
 # %%
@@ -73,6 +75,7 @@ plt1.plot(bike09tot)
 # %%
 import statsmodels
 # %%
+# On teste la stationnarité de la série
 from statsmodels.tsa.stattools import adfuller
 def test_stationnarity(dataset):
 
@@ -91,10 +94,12 @@ test_stationnarity(bike09tot)
 # %%
 import pmdarima
 # %%
+# On effectue un modèle ARIMA
 from pmdarima import auto_arima
 import warnings
 warnings.filterwarnings("ignore")
 # %%
+# On sélectionne les paramètres de notre modèle
 stepwise_fit = auto_arima(bike09tot, trace=True,
                           suppress_warnings=True)
 stepwise_fit.summary()                          
@@ -104,6 +109,7 @@ import statsmodels
 # %%
 from statsmodels.tsa.arima_model import ARIMA
 # %%
+# On évalue la pertinence de notre modèle sur des données deja existantes 
 print(bike09tot.shape)
 train=bike09tot.iloc[:-30]
 test=bike09tot.iloc[-30:]
@@ -122,12 +128,13 @@ print(pred)
 pred.plot(legend=True)
 test.plot(legend=True)
 
-# %%
-test.mean()
-pred.mean()
+
 # %%
 import sklearn.metrics
 # %%
+# On s'assure de la pertinence du modèle
+test.mean()
+pred.mean()
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 rmse=sqrt(mean_squared_error(pred,test))
@@ -137,6 +144,7 @@ model2=ARIMA(bike09tot,order=(0,0,2))
 model2=model2.fit()
 bike09tot.tail()
 # %%
+# On effectue la prédiction
 index_future_dates=pd.date_range(start='2021-03-30',end='2021-04-29')
 pred=model2.predict(start=len(bike09tot),end=len(bike09tot)+30,typ='levels').rename('ARIMA Predictions')
 pred.index=index_future_dates
